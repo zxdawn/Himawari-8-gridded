@@ -31,14 +31,14 @@ fi
 
 
 # Set DATE
-for YYYY in 2016 ; do      # Year (from 2015)
-  for MM in 05 ; do        # Month
-    for DD in 08 ; do      # Day
-      for HH in 02  ; do   # Hour
-      for MN in 30  ;do    # 00 10 20 30 40 50 # Minute
+for YYYY in 2018 ; do      # Year (from 2015)
+  for MM in 07 ; do        # Month
+    for DD in 28 ; do      # Day
+      for HH in 08  ; do   # Hour
+      for MN in 00 10  ;do    # 00 10 20 30 40 50 # Minute
 # Set band type
       for CHN in TIR ;do  #VIS TIR SIR EXT;do
-      for NUM in 1;do  #2 3 4 5 6 7 8 9 10 ;do #band number
+      for NUM in 2;do  #2 3 4 5 6 7 8 9 10 ;do #band number
 # -------------------------------------------------------
 # Quick reference list (Released gridded data and Himawari8 band)
 # [EXT] 01:Band03 
@@ -91,29 +91,42 @@ for YYYY in 2016 ; do      # Year (from 2015)
 # mv grid??.dat ${YYYY}${MM}${DD}${HH}${MN}.${CHN,,}.${NUM}.fld.dat
 # For GrADS user, comment out below GMT part and just open "grid??.dat" data.
 
+# # create image by GMT ------------------------------------------
+# echo "converting image(GMT) ..."
+# gmtset BASEMAP_TYPE PLAIN
+# if [ ${CHN} = "VIS" ] || [ ${CHN} = "EXT" ] || [ ${CHN} = "SIR" ];then
+#    makecpt -Cgray -T0/110/10 -Z > count.cpt
+#    unit="(%)"
+# elif [ ${CHN} = "TIR" ];then
+#    makecpt -Cgray -T200/300/10 -I -Z > count.cpt
+#    unit="(K)"
+# fi
+# imgfn=${YYYY}${MM}${DD}${HH}${MN}.${CHN,,}.${NUM}.fld
+# xyz2grd grid??.dat -Glittle_endian.gmt -I${resolution}/${resolution} -R85/205/-60/60 -F -N-999. -ZTLf
+# grdimage little_endian.gmt -JQ140/15 -Ccount.cpt -K -P -R85/205/-60/60 > ${imgfn}.eps
+# pscoast -Ba20g20/a15g15eWSn -J -R -Dh -K -N1/2t7.5_7.5:0/0/255/0 -W1/0/255/0 -O >> ${imgfn}.eps
+# echo "140 62 18 0 0 CB Himawari-8 (${para}) ${YYYY}${MM}${DD} ${HH}${MN}UTC" | pstext -R -J -G0/0/0 -O -K -N >> ${imgfn}.eps
+# psscale -D7.5/-1/12/0.5h -Ccount.cpt -B10/:"${unit}": -O >> ${imgfn}.eps
+# ps2raster ${imgfn}.eps  -P -A -E300 -Qt -Qg -Tg #&& eog ${imgfn}.png
+# # --------------------------------------------------------------
 
-# create image by GMT ------------------------------------------
-echo "converting image(GMT) ..."
-gmtset BASEMAP_TYPE PLAIN
-if [ ${CHN} = "VIS" ] || [ ${CHN} = "EXT" ] || [ ${CHN} = "SIR" ];then
-   makecpt -Cgray -T0/110/10 -Z > count.cpt
-   unit="(%)"
-elif [ ${CHN} = "TIR" ];then
-   makecpt -Cgray -T200/300/10 -I -Z > count.cpt
-   unit="(K)"
-fi
-imgfn=${YYYY}${MM}${DD}${HH}${MN}.${CHN,,}.${NUM}.fld
-xyz2grd grid??.dat -Glittle_endian.gmt -I${resolution}/${resolution} -R85/205/-60/60 -F -N-999. -ZTLf
-grdimage little_endian.gmt -JQ140/15 -Ccount.cpt -K -P -R85/205/-60/60 > ${imgfn}.eps
-pscoast -Ba20g20/a15g15eWSn -J -R -Dh -K -N1/2t7.5_7.5:0/0/255/0 -W1/0/255/0 -O >> ${imgfn}.eps
-echo "140 62 18 0 0 CB Himawari-8 (${para}) ${YYYY}${MM}${DD} ${HH}${MN}UTC" | pstext -R -J -G0/0/0 -O -K -N >> ${imgfn}.eps
-psscale -D7.5/-1/12/0.5h -Ccount.cpt -B10/:"${unit}": -O >> ${imgfn}.eps
-ps2raster ${imgfn}.eps  -P -A -E300 -Qt -Qg -Tg #&& eog ${imgfn}.png
-# --------------------------------------------------------------
-
+# ------------------------------------------
+# Added by Xin [24 Dec 2018]
+# If user wants to convert .dat file to .nc file,
+# please install nco and uncomment below part:
+# if [ ${CHN} = "TIR" -o ${CHN} = "SIR" ];then
+#    ctl="grads20.ctl"
+# elif [ ${CHN} = "VIS" ];then
+#    ctl="grads10.ctl"
+# elif [ ${CHN} = "EXT" ];then
+#    ctl="grads05.ctl"
+# fi
+# ncname=${YYYY}${MM}${DD}${HH}${MN}.${CHN,,}.${NUM}.nc
+# cdo -f nc import_binary ${ctl} ${ncname}
+# ------------------------------------------
 
 # delete downloaded file
-rm  *.gmt *.dat *.eps   #(Modify setting if user leaving .dat data)
+# rm  *.gmt *.dat *.eps   #(Modify setting if user deleting .dat data)
 
          fi #file exist
       done
