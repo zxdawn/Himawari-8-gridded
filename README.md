@@ -1,11 +1,11 @@
 # HIMAWARI-8-gridded
 ## What is it?
 
-Scripts of downloading Gridded-processed data of Himawari 8 geostationary meteorological satellite (H8).
+Scripts of downloading Gridded-processed data of Himawari 8.
 
 The sample programs (F90 and C) and calibration tables provided by [CEReS](http://www.cr.chiba-u.jp/databases/GEO/H8_9/FD/index.html) are in `count2tbb_v101` directory.
 
-Since downloading multiple files needs many modifications, I write them in python to make this easy to get **TBB files in nc format**.
+Since downloading multiple files needs many modifications, I write them in python to get **TBB files in nc format**.
 
 ## Requirements
 
