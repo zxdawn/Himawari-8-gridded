@@ -1,8 +1,8 @@
 program main
 ! count to albedo v1.00
 implicit none
-character*29::arg
-character*8::filelist
+character*80::arg
+character*80::filelist
 integer :: status, system
 real*4,dimension(5000)::tbb
 integer*2,dimension(5000)::cnt
