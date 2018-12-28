@@ -153,10 +153,14 @@ def concatenate(chn, filename, files, tmp_check, desdir, debug):
     # concatenate minutely files to a daily file
     #   and aviod concatenating daily file
     if prefix_file != tmp_check:
+
         if debug > 0:
             print ('Concatenate '+tmp_check+' files')
+
         minutely_pattern = tmp_check+'????.'+chn.lower()+'.??.nc'
-        call (['ncecat -O '+desdir+minutely_pattern+' '+desdir+tmp_check+'.nc'], shell=True)
+        ds = xr.open_mfdataset(minutely_pattern,concat_dim='time',parallel=True)
+        ds.to_netcdf(path=desdir+tmp_check+'.nc')
+
         # avoid deleting concatenated file
         rm_tmp(desdir+minutely_pattern)
         tmp_check = prefix_file
@@ -165,10 +169,13 @@ def concatenate(chn, filename, files, tmp_check, desdir, debug):
     if filename == ntpath.basename(files[-1]):
         # check whether daily file exists
         if not os.path.isfile(desdir+prefix_file+'.nc'):
+
             if debug > 0:
                 print ('Concatenate '+prefix_file+' files')
-            command = 'ncecat -O '+desdir+prefix_file+'*.nc '+desdir+prefix_file+'.nc'
-            call(command, shell=True)
+
+            ds = xr.open_mfdataset(desdir+prefix_file+'*.nc',concat_dim='time',parallel=True)
+            ds.to_netcdf(desdir+prefix_file+'.nc')
+
         # deleting minutely files
         rm_tmp(desdir+tmp_check+'????.'+chn.lower()+'.??.nc')
 
@@ -280,6 +287,14 @@ def main(req_path,save_path,sdate,edate,tstep,chn,num,debug):
     req_path  = os.path.join(req_path, "")
     save_path = os.path.join(save_path, "")
 
+    # check input channel name
+    if chn in ['TIR', 'SIR']:
+        ctl  = 'grads20.ctl'
+    elif chn == 'VIS':
+        ctl  = 'grads10.ctl'
+    elif chn == 'EXT':
+        ctl  = 'grads05.ctl'
+
     # get the list of datetime from sdate to edate by day
     d1       = datetime.strptime(sdate, '%Y-%m-%d-%H:%M')
     d2       = datetime.strptime(edate, '%Y-%m-%d-%H:%M')
@@ -305,7 +320,7 @@ def main(req_path,save_path,sdate,edate,tstep,chn,num,debug):
     # check data day by day
     tmp_check = ntpath.basename(files[0])[0:8]
 
-    for file in tqdm(files,desc='total progress'):
+    for file in tqdm(files, desc='total progress'):
         # download compressed file
         filename    = ntpath.basename(file)
         destination = os.path.join(save_path+file[0:4]+'/'+file[4:6], filename)
@@ -313,51 +328,75 @@ def main(req_path,save_path,sdate,edate,tstep,chn,num,debug):
 
         if debug > 0:
             print ('Downloading '+ filename +' ...')
+
         downloadFiles(ftp, source, file, destination, debug)
 
         if debug > 0:
             print ('    Extract file')
+
         call (['bunzip2', destination])
 
         if debug > 0:
             print ('    Convert byte order')
+
         call (['dd', 'if='+destination[:-4], 'of='+desdir+'little.geoss', 'conv=swab'], stderr=subprocess.PIPE, stdout=subprocess.PIPE)
-        para = req_path+filename.split('.',1)[1].rsplit('.',3)[0]
 
         if debug > 0:
             print ('    Convert count to tbb(albedo)')
+        
+        para = req_path+filename.split('.',1)[1].rsplit('.',3)[0]
         convert_tbb(chn, req_path, desdir, para)
 
         # remove temporary .geoss files
         rm_tmp(desdir+'*.geoss')
 
         # set path of .ctl and savename
-        ctl_file = req_path+'grads20.ctl'
+        ctl_file = req_path+ctl
         nc_file  = filename.rsplit('.',3)[0]+'.nc'
 
         # correct the path of .dat file in .ctl
         with open(ctl_file) as f:
             lines = f.readlines()
-            lines[0] = 'dset '+desdir+'grid20.dat\n'
+            lines[0] = 'dset '+desdir+ctl[:-4].replace('s', '').replace('a', 'i')+'.dat\n'
         with open(ctl_file, "w") as f:
             f.writelines(lines)
 
         # convert .dat to .nc
         if debug > 0:
             print ('    Convert to '+nc_file)
+
         command = 'cdo -f nc4c -z zip_6 import_binary '+ctl_file+' '+desdir+nc_file
         call (command, stderr=subprocess.PIPE, stdout=subprocess.PIPE, shell=True)
+
         # remove temporary .dat files
         rm_tmp(desdir+'*.dat')
 
-        # delete the useless 'time' dimension and save again
+        # set right datetime and lon (-180 ~ 180)
         with xr.open_dataset(desdir+nc_file) as ds:
-            ds_new = ds.squeeze('time',drop=True)
-            ds_new.to_netcdf(desdir+nc_file+'tmp')
+            # calculate diff between 2015-01-01 and this date
+            const_date = '201501010000'
+            now_date   = nc_file.split('.',1)[0]
+            str_format = '%Y%m%d%H%M'
+            diff       = datetime.strptime(now_date, str_format) \
+                        - datetime.strptime(const_date, str_format)
+
+            # assign value and attributes
+            ds.coords['time']       = [diff.total_seconds()]
+            ds.coords['time'].attrs = {'units': 'seconds since 2015-01-01'}
+
+            # change lon value
+            lon       = ds['lon'].values
+            ds['lon'] = ((lon - 180) % 360) - 180
+
+            # save file
+            ds.to_netcdf(desdir+nc_file+'tmp')
+
+        # rename file
         move(desdir+nc_file+'tmp', desdir+nc_file)
 
         # concatenate minutely files to a daily file
         concatenate(chn, filename, files, tmp_check, desdir, debug)
+
 
 if __name__ == '__main__':
     main()
