@@ -159,7 +159,9 @@ def concatenate(chn, filename, files, tmp_check, desdir, debug):
 
         minutely_pattern = tmp_check+'????.'+chn.lower()+'.??.nc'
         ds = xr.open_mfdataset(minutely_pattern,concat_dim='time',parallel=True)
-        ds.to_netcdf(path=desdir+tmp_check+'.nc')
+        comp = dict(zlib=True, complevel=5)
+        encoding = {var: comp for var in ds.data_vars}
+        ds.to_netcdf(path=desdir+tmp_check+'.nc', encoding=encoding)
 
         # avoid deleting concatenated file
         rm_tmp(desdir+minutely_pattern)
@@ -173,7 +175,8 @@ def concatenate(chn, filename, files, tmp_check, desdir, debug):
             if debug > 0:
                 print ('Concatenate '+prefix_file+' files')
 
-            ds = xr.open_mfdataset(desdir+prefix_file+'*.nc',concat_dim='time',parallel=True)
+            ds = xr.open_mfdataset(desdir+prefix_file+'*.nc',concat_dim='time',decode_times=False,parallel=True)
+            ds.time.attrs['units'] = 'hours since 2015-01-01 00:00'
             ds.to_netcdf(desdir+prefix_file+'.nc')
 
         # deleting minutely files
@@ -383,10 +386,6 @@ def main(req_path,save_path,sdate,edate,tstep,chn,num,debug):
             # assign value and attributes
             ds.coords['time']       = [diff.total_seconds()]
             ds.coords['time'].attrs = {'units': 'seconds since 2015-01-01'}
-
-            # change lon value
-            lon       = ds['lon'].values
-            ds['lon'] = ((lon - 180) % 360) - 180
 
             # save file
             ds.to_netcdf(desdir+nc_file+'tmp')
