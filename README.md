@@ -68,6 +68,7 @@ Options:
                         01:Band13 02:Band14 03:Band15 04:Band16 05:Band07
                         06:Band08 07:Band09 08:Band10 09:Band11 10:Band12
                         -----------------------------------  [default: 2]
+  -c, --compiler TEXT   Compiler: gfortran, ifort  [default: gfortran]
   -d, --debug INTEGER   Debug level  [default: 0]
   --help                Show this message and exit.
 ```
