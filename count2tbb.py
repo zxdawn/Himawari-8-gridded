@@ -19,23 +19,29 @@ def check(chn, num):
             print (error_message)
             sys.exit()
 
-def fortran_compile(req_path):
+def fortran_compile(compiler, req_path):
     # Count to tbb (albedo) program name
     # 2km: main20 1km: main10 0.5km: main05
     src     = req_path+'main20.f90'
     exefile = req_path+'tir.x'
-    # call(['ifort', src, '-assume byterecl -o', exefile])
-    call (['gfortran', src, '-o', exefile])
+    if compiler == 'gfortran':
+        call (['gfortran', src, '-o', exefile])
+    else:
+        call(['ifort', src, '-assume', 'byterecl', '-o', exefile])
 
     src     = req_path+'main10.f90'
     exefile = req_path+'vis.x'
-    # call(['ifort', src, '-assume byterecl -o', exefile])
-    call (['gfortran', src, '-o', exefile])
+    if compiler == 'gfortran':
+        call (['gfortran', src, '-o', exefile])
+    else:
+        call(['ifort', src, '-assume', 'byterecl', '-o', exefile])
 
     src     = req_path+'main05.f90'
     exefile = req_path+'ext.x'
-    # call(['ifort', src, '-assume byterecl -o', exefile])
-    call (['gfortran', src, '-o', exefile])
+    if compiler == 'gfortran':
+        call (['gfortran', src, '-o', exefile])
+    else:
+        call(['ifort', src, '-assume', 'byterecl', '-o', exefile])
 
     fortran_programs = ['tir.x', 'vis.x', 'ext.x']
 
@@ -265,6 +271,14 @@ def concatenate(chn, filename, files, tmp_check, desdir, debug):
 )
 
 @click.option(
+    '--compiler',
+    '-c',
+    default = 'gfortran',
+    help='Compiler: gfortran, ifort',
+    show_default=True
+)
+
+@click.option(
     '--debug',
     '-d',
     default = 0,
@@ -274,7 +288,7 @@ def concatenate(chn, filename, files, tmp_check, desdir, debug):
 
 # -------------------------------------------------------
 
-def main(req_path,save_path,sdate,edate,tstep,chn,num,debug):
+def main(req_path,save_path,sdate,edate,tstep,chn,num,compiler,debug):
     '''
     \b
     Himawari-8 gridded format shell script. v1.00 (201605)
@@ -311,7 +325,7 @@ def main(req_path,save_path,sdate,edate,tstep,chn,num,debug):
     # check the input
     check (chn,num)
     # compile fortran code
-    fortran_compile(req_path)
+    fortran_compile(compiler,req_path)
     # Create monthly directories: YYYY/MM/
     cdirs(dir_list, save_path)
 
@@ -384,8 +398,8 @@ def main(req_path,save_path,sdate,edate,tstep,chn,num,debug):
                         - datetime.strptime(const_date, str_format)
 
             # assign value and attributes
-            ds.coords['time']       = [diff.total_seconds()]
-            ds.coords['time'].attrs = {'units': 'seconds since 2015-01-01'}
+            ds.coords['time']       = [diff.total_seconds()/3600]
+            ds.coords['time'].attrs = {'units': 'hours since 2015-01-01'}
 
             # save file
             ds.to_netcdf(desdir+nc_file+'tmp')
