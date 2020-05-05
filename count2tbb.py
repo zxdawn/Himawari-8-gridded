@@ -101,7 +101,7 @@ def downloadFiles(ftp, source, file, destination, debug):
         pass
     except ftplib.error_perm:
         print ('Error: could not change to ' + os.path.dirname(source + file))
-        sys.exit('Ending')
+        return 0
 
     filename = ntpath.basename(file)
 
@@ -121,7 +121,9 @@ def downloadFiles(ftp, source, file, destination, debug):
                 print ('    Downloaded')
     except:
         print ('Error: File could not be downloaded ' + filename)
-        sys.exit("Ending")
+        return 0
+
+    return 1
 
 def convert_tbb(chn, req_path, desdir, para):
     if chn in ['TIR', 'SIR']:
@@ -346,7 +348,10 @@ def main(req_path,save_path,sdate,edate,tstep,chn,num,compiler,debug):
         if debug > 0:
             print ('Downloading '+ filename +' ...')
 
-        downloadFiles(ftp, source, file, destination, debug)
+        file_exist = downloadFiles(ftp, source, file, destination, debug)
+        # skip following steps if file isn't found
+        if not file_exist:
+            continue
 
         if debug > 0:
             print ('    Extract file')
